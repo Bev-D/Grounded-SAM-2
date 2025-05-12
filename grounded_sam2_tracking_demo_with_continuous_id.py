@@ -16,6 +16,7 @@ import copy
 
 """
 Step 1: Environment settings and model initialization
+环境设置和模型初始化
 """
 # use bfloat16 for the entire notebook
 torch.autocast(device_type="cuda", dtype=torch.bfloat16).__enter__()
@@ -43,8 +44,10 @@ grounding_model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id).
 
 
 # setup the input image and text prompt for SAM 2 and Grounding DINO
+#为 SAM 2 和接地 DINO 设置输入图像和文本提示
 # VERY important: text queries need to be lowercased + end with a dot
-text = "car."
+#非常重要：文本查询需要小写 + 以点结尾
+text = "car. road. Vegetation."
 
 # `video_dir` a directory of JPEG frames with filenames like `<frame_index>.jpg`  
 video_dir = "notebooks/videos/car"
@@ -76,6 +79,8 @@ objects_count = 0
 
 """
 Step 2: Prompt Grounding DINO and SAM image predictor to get the box and mask for all frames
+提示接地 DINO 和 SAM 图像预测器以获取所有帧的框和掩码
+
 """
 print("Total frames:", len(frame_names))
 for start_frame_idx in range(0, len(frame_names), step):
