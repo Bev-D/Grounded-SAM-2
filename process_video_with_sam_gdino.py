@@ -52,7 +52,7 @@ def process_video_with_sam_gdino(
 
     os.makedirs(source_video_frame_dir, exist_ok=True)
     os.makedirs(save_tracking_results_dir, exist_ok=True)
-
+    
     """ Step 2: 加载模型 """
     grounding_model = load_model(
         model_config_path="grounding_dino/groundingdino/config/GroundingDINO_SwinT_OGC.py",
@@ -67,6 +67,10 @@ def process_video_with_sam_gdino(
     sam2_image_model = build_sam2(model_cfg, sam2_checkpoint, device=device)
     image_predictor = SAM2ImagePredictor(sam2_image_model)
 
+
+
+        
+        
     """ Step 3: 视频帧提取 """
     frame_generator = sv.get_video_frames_generator(video_path, stride=1)
     with sv.ImageSink(target_dir_path=source_video_frame_dir, overwrite=True, image_name_pattern="{:05d}.jpg") as sink:
@@ -84,6 +88,8 @@ def process_video_with_sam_gdino(
     img_path = os.path.join(source_video_frame_dir, frame_names[ann_frame_idx])
     image_source, image = load_image(img_path)
 
+
+
     """ Step 4: Grounding DINO 检测 """
     boxes, confidences, labels = predict(
         model=grounding_model,
@@ -100,6 +106,13 @@ def process_video_with_sam_gdino(
 
     """ Step 5: SAM 图像预测 """
     image_predictor.set_image(image_source)
+
+    torch.autocast(device_type=device, dtype=torch.bfloat16).__enter__()
+    if torch.cuda.get_device_properties(0).major >= 8:
+        # turn on tfloat32 for Ampere GPUs (https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices)
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+    
     masks, scores, logits = image_predictor.predict(
         point_coords=None,
         point_labels=None,
