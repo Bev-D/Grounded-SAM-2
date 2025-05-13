@@ -1,0 +1,73 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Grounded SAM2 视频处理</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    input, textarea, select, button { margin: 10px 0; display: block; width: 300px; }
+  </style>
+</head>
+<body>
+  <h2>启动视频处理任务</h2>
+
+  <label>Video Path:</label>
+  <input type="text" id="videoPath" value="./assets/Rec_0007.mp4" />
+
+
+  <!-- 新增的文件选择按钮 -->
+  <input type="file" id="filePicker" style="display: none;" />
+  <button onclick="openFilePicker()">选择视频文件</button>
+
+  <label>Text Prompt:</label>
+  <input type="text" id="textPrompt" value="car." />
+
+  <label>Prompt Type:</label>
+  <select id="promptType">
+    <option value="point">Point</option>
+    <option value="box" selected>Box</option>
+    <option value="mask">Mask</option>
+  </select>
+
+  <button onclick="startProcessing()">开始处理</button>
+
+  <h3>响应结果：</h3>
+  <pre id="response"></pre>
+
+  <script>
+    function openFilePicker() {
+      document.getElementById("filePicker").click();
+    }
+  
+    document.getElementById("filePicker").addEventListener("change", function () {
+      const file = this.files[0];
+      if (file) {
+        // 将用户选择的文件路径设置到 videoPath 文本框中
+        // 注意：出于安全限制，浏览器不会返回真实本地路径（如 C:\xxx），但可以使用 File API 或 Web API 处理上传
+        const fakePath = URL.createObjectURL(file); // 可用于前端展示或后端上传
+        document.getElementById("videoPath").value = fakePath;
+      }
+    });
+  
+    async function startProcessing() {
+      const request = {
+        video_path: document.getElementById("videoPath").value,
+        text_prompt: document.getElementById("textPrompt").value,
+        prompt_type: document.getElementById("promptType").value
+      };
+  
+      const response = await fetch("http://localhost:8000/process-video", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      });
+  
+      const result = await response.json();
+      document.getElementById("response").textContent = JSON.stringify(result, null, 2);
+    }
+  </script>
+
+</body>
+</html>
