@@ -42,6 +42,7 @@ def process_video_with_sam_gdino(
     """
 
     """ Step 1: 设置路径 """
+    video_path=os.path.normpath(os.path.abspath(video_path))
     file_name = os.path.basename(video_path)
     file_stem = os.path.splitext(file_name)[0]
     
@@ -104,6 +105,14 @@ def process_video_with_sam_gdino(
     input_boxes = box_convert(boxes=boxes, in_fmt="cxcywh", out_fmt="xyxy").numpy()
     class_names = labels
 
+    if len(input_boxes) == 0:
+        print("⚠️ 没有检测到任何对象，跳过 SAM 图像预测和跟踪流程")
+        return {
+            "status": "warning",
+            "message": "No objects detected by Grounding DINO.",
+            "output_video_path": output_video_path  # 或者返回 None 表示未处理
+        }
+
     """ Step 5: SAM 图像预测 """
     image_predictor.set_image(image_source)
 
@@ -112,7 +121,7 @@ def process_video_with_sam_gdino(
         # turn on tfloat32 for Ampere GPUs (https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices)
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
-    
+
     masks, scores, logits = image_predictor.predict(
         point_coords=None,
         point_labels=None,

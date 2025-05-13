@@ -98,7 +98,7 @@ def index():
             video_file.save(save_path)
 
             # 👇 使用绝对路径
-            video_path = os.path.abspath(save_path)
+            # video_path = os.path.abspath(save_path)
 
         if not video_path:
             result = {"error": "未提供视频路径"}
