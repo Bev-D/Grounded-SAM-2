@@ -3,6 +3,7 @@ import cv2
 import torch
 import numpy as np
 import supervision as sv
+from fontTools.cffLib import topDictOperators
 from torchvision.ops import box_convert
 from pathlib import Path
 from tqdm import tqdm
@@ -42,7 +43,8 @@ def process_video_with_sam_gdino(
     """
 
     """ Step 1: 设置路径 """
-    video_path=os.path.normpath(os.path.abspath(video_path))
+    # todo：格式化路径
+    # video_path=os.path.normpath(os.path.abspath(video_path))
     file_name = os.path.basename(video_path)
     file_stem = os.path.splitext(file_name)[0]
     

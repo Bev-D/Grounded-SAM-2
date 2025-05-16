@@ -1,0 +1,149 @@
+﻿# file_utils.py
+
+import os
+import requests
+from pathlib import Path
+from urllib.parse import urlparse
+from PIL import Image
+from io import BytesIO
+import tempfile
+import shutil
+from tqdm import tqdm
+import hashlib
+
+# 默认下载目录
+DEFAULT_DOWNLOAD_DIR = Path(tempfile.gettempdir()) / "file_utils_cache"
+os.makedirs(DEFAULT_DOWNLOAD_DIR, exist_ok=True)
+
+
+
+
+
+
+def get_url_hash(url: str) -> str:
+    """
+    对 URL 进行哈希计算，用于生成唯一的文件名。
+    """
+    return hashlib.md5(url.encode()).hexdigest()
+
+
+def is_url(path_or_url: str) -> bool:
+    """
+    判断输入是否为 URL。
+    """
+    parsed = urlparse(path_or_url)
+    return parsed.scheme in ("http", "https")
+
+
+def download_file(url: str, filename: str = None, download_dir: str = None) -> str:
+    """
+    下载远程文件到本地目录，并显示进度条。
+
+    :param url: 文件的URL地址
+    :param filename: 自定义保存的文件名（含扩展名），默认从URL中提取
+    :param download_dir: 本地存储目录，默认使用临时缓存目录
+    :return: 本地文件路径
+    """
+
+    download_dir = Path(download_dir or DEFAULT_DOWNLOAD_DIR)
+    download_dir.mkdir(parents=True, exist_ok=True)
+
+    # 如果没有指定文件名，则用 URL 哈希 + 扩展名
+    if not filename:
+        ext = os.path.splitext(os.path.basename(url))[1] or ".jpg"
+        hash_name = f"{get_url_hash(url)}{ext}"
+        filename = hash_name
+
+    local_path = download_dir / filename
+
+    # 如果文件已存在，直接返回路径
+    if local_path.exists():
+        print(f"文件已存在，跳过下载：{local_path}")
+        return str(local_path)
+
+    # 开始下载
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+
+    total_size = int(response.headers.get("Content-Length", 0))
+    block_size = 1024
+
+    with open(local_path, "wb") as f, tqdm(
+            desc=f"Downloading {filename}",
+            total=total_size,
+            unit="iB",
+            unit_scale=True,
+    ) as t:
+        for chunk in response.iter_content(block_size):
+            f.write(chunk)
+            t.update(len(chunk))
+
+    return str(local_path)
+
+
+def ensure_local_file(path_or_url: str, download_dir: str = None) -> str:
+    """
+    确保输入路径是本地有效文件路径。
+
+    - 如果是 URL，则下载到本地并返回本地路径。
+    - 如果是本地路径且存在，则直接返回该路径。
+    """
+    if is_url(path_or_url):
+        return download_file(path_or_url, download_dir=download_dir)
+    else:
+        if not os.path.exists(path_or_url):
+            raise FileNotFoundError(f"本地文件不存在: {path_or_url}")
+        return path_or_url
+
+
+def load_image_from_url(url: str) -> Image.Image:
+    """
+    从 URL 加载图像并返回 PIL.Image 对象。
+    """
+    response = requests.get(url)
+    response.raise_for_status()
+    return Image.open(BytesIO(response.content)).convert("RGB")
+
+
+def save_output(data, output_path: str):
+    """
+    保存输出数据到指定路径。
+
+    :param data: 要保存的数据（如图像、字节流或字符串）
+    :param output_path: 输出文件路径
+    """
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if isinstance(data, Image.Image):
+        data.save(output_path)
+    elif isinstance(data, bytes):
+        with open(output_path, "wb") as f:
+            f.write(data)
+    else:
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(str(data))
+
+
+def cleanup(download_dir: str = None):
+    """
+    清理指定目录中的所有文件。
+
+    :param download_dir: 要清理的目录，默认使用默认缓存目录
+    """
+    dir_to_clean = Path(download_dir or DEFAULT_DOWNLOAD_DIR)
+    if dir_to_clean.exists():
+        shutil.rmtree(dir_to_clean)
+        os.makedirs(dir_to_clean)  # 重建空目录
+
+
+def get_temp_path(suffix: str = ".tmp") -> str:
+    """
+    获取一个临时文件路径。
+
+    :param suffix: 文件后缀
+    :return: 临时文件路径
+    """
+    return str(Path(tempfile.NamedTemporaryFile(suffix=suffix).name))
+
+
