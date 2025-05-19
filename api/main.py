@@ -8,6 +8,9 @@ app = FastAPI(title="Grounded SAM2 Image Processing API")
 # 挂载静态资源目录
 app.mount("/static", StaticFiles(directory="api/static", html=True), name="static")
 
+# 挂载图像结果目录
+app.mount("/results", StaticFiles(directory="results"), name="results")
+
 
 # 注册图像处理路由
 app.include_router(image_process_router.router, prefix="/api/v1/image", tags=["Image Processing"])
@@ -27,3 +30,5 @@ def read_root():
 if __name__ == "__main__":
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)
 
+# uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+   

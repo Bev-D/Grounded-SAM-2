@@ -1,0 +1,133 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>图像处理API测试</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    input, textarea, button { margin: 5px 0; display: block; width: 100%; max-width: 400px; }
+    #result { white-space: pre-wrap; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>图像处理API测试页面</h1>
+
+  <label>图片路径 (URL 或本地路径):</label>
+  <input type="text" id="imgPath" value="http://10.60.9.26:8000/A01601.JPG">
+
+  <label>文本提示:</label>
+  <input type="text" id="textPrompt" value="boat.">
+
+  <label>Client ID:</label>
+  <input type="text" id="clientId" value="">
+
+  <label>Box Threshold:</label>
+  <input type="number" step="0.01" id="boxThreshold" value="0.35">
+
+  <label>Text Threshold:</label>
+  <input type="number" step="0.01" id="textThreshold" value="0.25">
+
+  <label>设备:</label>
+  <select id="device">
+    <option value="cuda">CUDA</option>
+    <option value="cpu">CPU</option>
+  </select>
+
+  <button onclick="sendRequest()">发送请求</button>
+  <!-- 新增的导出按钮 -->
+  <button onclick="downloadMaskImage()">导出掩码图像</button>
+
+  <h2>结果:</h2>
+  <div id="result">等待响应...</div>
+
+  <script>
+    async function sendRequest() {
+      const imgPath = document.getElementById('imgPath').value;
+      const textPrompt = document.getElementById('textPrompt').value;
+      const clientId = document.getElementById('clientId').value;
+      const boxThreshold = parseFloat(document.getElementById('boxThreshold').value);
+      const textThreshold = parseFloat(document.getElementById('textThreshold').value);
+      const device = document.getElementById('device').value;
+
+      const responseDiv = document.getElementById('result');
+      responseDiv.textContent = "请求中...";
+
+      try {
+        const response = await fetch('/api/v1/image/process', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            img_path: imgPath,
+            text_prompt: textPrompt,
+            client_id: clientId,
+            box_threshold: boxThreshold,
+            text_threshold: textThreshold,
+            device: device
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP错误！状态码: ${response.status}`);
+        }
+
+        const result = await response.json();
+        responseDiv.textContent = JSON.stringify(result, null, 2);
+      } catch (error) {
+        responseDiv.textContent = "发生错误：" + error.message;
+      }
+    }
+     // ↓↓↓ 新增的下载函数放在这里 ↓↓↓
+  async function downloadMaskImage() {
+    const resultText = document.getElementById('result').textContent;
+    if (!resultText || resultText.trim() === "") {
+      alert("请先执行一次图像处理请求");
+      return;
+    }
+
+    let result;
+    try {
+      result = JSON.parse(resultText);
+    } catch (e) {
+      alert("结果不是合法的 JSON 数据");
+      return;
+    }
+
+    const maskImagePath = result.mask_image_path;
+
+    if (!maskImagePath) {
+      alert("当前结果中没有 mask_image_path");
+      return;
+    }
+
+    // 使用 fetch 下载图片（支持跨域）
+    try {
+      const response = await fetch(maskImagePath);
+      if (!response.ok) throw new Error("图片下载失败");
+
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = getFilenameFromPath(maskImagePath);
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(a);
+    } catch (error) {
+      alert("下载失败：" + error.message);
+    }
+  }
+
+  // 工具函数：从路径提取文件名
+  function getFilenameFromPath(path) {
+    const url = new URL(path, window.location.origin);
+    const pathname = url.pathname;
+    return pathname.substring(pathname.lastIndexOf('/') + 1);
+  }
+  </script>
+</body>
+</html>

@@ -1,26 +1,39 @@
-﻿from pydantic import BaseModel
-from typing import List, Optional
+﻿from pydantic import BaseModel, field_validator
+from typing import List, Optional,Dict, Any
+from pydantic import BaseModel
 
-class ProcessRequest(BaseModel):
+from task_manager import generate_client_id
+
+
+class ProcessImageRequest(BaseModel):
     img_path: str
     text_prompt: str
-    box_threshold: float = 0.35
-    text_threshold: float = 0.25
-    device: str = "cuda"
-    output_dir: Optional[str] = "./outputs/picturetest"
-    save_visualizations: bool = True
-    dump_json_results: bool = True
+    client_id: Optional[str] = None  # 先设为 None，默认值由验证器处理
+    box_threshold: Optional[float] = 0.35
+    text_threshold: Optional[float] = 0.25
+    save_visualizations: Optional[bool] = True
+    dump_json_results: Optional[bool] = True
+    device:Optional[str] = "cuda"
+    @field_validator("client_id", mode="after")
+    def set_default_client_id(cls, value):
+        if value is None or value == "":
+            return generate_client_id()
+        return value
 
-class AnnotationResult(BaseModel):
+class AnnotationItem(BaseModel):
     class_name: str
     bbox: List[float]
-    segmentation: dict  # RLE 格式
-    score: float
+    segmentation: Dict[str, Any]  # RLE 格式
+    score: list
 
-class ProcessResponse(BaseModel):
+class ProcessImageResponse(BaseModel):
+    client_id: str
     image_path: str
-    annotations: List[AnnotationResult]
-    box_format: str
+    text_prompt: str
+    mask_image_path: Optional[str] = None
+    annotated_image_path: Optional[str] = None
+    json_result_path: Optional[str] = None
+    annotations: List[AnnotationItem]
     img_width: int
     img_height: int
 
