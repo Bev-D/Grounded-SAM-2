@@ -814,6 +814,15 @@ class SAM2VideoPredictor(SAM2Base):
             frame_idx (int): Same as input; the index of the processed frame.
             obj_ids (list): List of currently tracked object IDs.
             video_res_masks (Tensor): Segmentation masks predicted for the objects in the frame.
+            
+        使用处于推理状态的现有点/掩码在单个帧上运行推理。
+        参数：
+            inference_state （dict）：跟踪进程的当前状态。
+            frame_idx （int）：要运行推理的帧的索引。
+        返回：
+            frame_idx （int）：与 input 相同;已处理帧的索引。
+            obj_ids （list）：当前跟踪的对象 ID 的列表。
+            video_res_masks （Tensor）：为帧中的对象预测的分割掩码。
         """
         if frame_idx >= inference_state["num_frames"]:
             raise ValueError(

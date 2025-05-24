@@ -1,4 +1,4 @@
-﻿from pydantic import BaseModel, field_validator
+﻿from pydantic import BaseModel, field_validator, model_validator
 from typing import List, Optional,Dict, Any
 from pydantic import BaseModel
 
@@ -14,17 +14,17 @@ class ProcessImageRequest(BaseModel):
     save_visualizations: Optional[bool] = True
     dump_json_results: Optional[bool] = True
     device:Optional[str] = "cuda"
-    @field_validator("client_id", mode="after")
-    def set_default_client_id(cls, value):
-        if value is None or value == "":
-            return generate_client_id()
-        return value
+    @model_validator(mode='after')
+    def ensure_client_id(self):
+        if not self.client_id:
+            self.client_id = generate_client_id()
+        return self
 
 class AnnotationItem(BaseModel):
     class_name: str
     bbox: List[float]
     segmentation: Dict[str, Any]  # RLE 格式
-    score: list
+    score: list[float]
 
 class ProcessImageResponse(BaseModel):
     client_id: str
@@ -41,12 +41,17 @@ class ProcessImageResponse(BaseModel):
 # 视频处理模型（新增）
 class ProcessVideoRequest(BaseModel):
     video_path: str
-    text_prompt: str = "car."
+    text_prompt: str
+    client_id: Optional[str] = None  # 先设为 None，默认值由验证器处理
     box_threshold: float = 0.35
     text_threshold: float = 0.25
-    output_dir: Optional[str] = "./outputs/videotest"
-    prompt_type: str = "box"  # point, box, mask
-    device: str = "cuda"
+    prompt_type: Optional[str] = "box"  # point, box, mask
+    device:Optional[str] = "cuda"
+    @model_validator(mode='after')
+    def ensure_client_id(self):
+        if not self.client_id:
+            self.client_id = generate_client_id()
+        return self
 
 
 class ProcessVideoResponse(BaseModel):

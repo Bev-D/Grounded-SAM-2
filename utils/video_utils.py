@@ -33,3 +33,29 @@ def create_video_from_images(image_folder, output_video_path, frame_rate=25):
     video_writer.release()
     print(f"Video saved at {output_video_path}")
 
+def create_video_from_image_array(images, output_video_path, frame_rate=25):
+    """
+    从传入的图像数组创建视频。
+
+    参数:
+        images (list of np.ndarray): 包含图像帧的数组，每个元素为OpenCV格式的图像。
+        output_video_path (str): 输出视频文件的路径。
+        frame_rate (int): 视频帧率，默认为25。
+    """
+    if not images:
+        raise ValueError("图像数组为空，无法生成视频。")
+
+    # 获取第一帧以确定视频尺寸
+    height, width, _ = images[0].shape
+
+    # 创建VideoWriter对象
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    video_writer = cv2.VideoWriter(output_video_path, fourcc, frame_rate, (width, height))
+
+    # 将每帧写入视频
+    for image in tqdm(images):
+        video_writer.write(image)
+
+    # 释放资源
+    video_writer.release()
+    print(f"视频已保存至 {output_video_path}")

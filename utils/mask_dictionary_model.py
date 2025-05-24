@@ -99,7 +99,7 @@ class MaskDictionaryModel:
         else:
             np.save(os.path.join(mask_data_dir, self.mask_name), mask_img.numpy().astype(np.uint16))
             json_data_path = os.path.join(json_data_dir, self.mask_name.replace(".npy", ".json"))
-            print("save_empty_mask_and_json", json_data_path)
+            # print("save_empty_mask_and_json", json_data_path)
             self.to_json(json_data_path)
 
 

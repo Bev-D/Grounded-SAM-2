@@ -10,6 +10,7 @@ import tempfile
 import shutil
 from tqdm import tqdm
 import hashlib
+import mimetypes
 
 # 默认下载目录
 DEFAULT_DOWNLOAD_DIR = Path(tempfile.gettempdir()) / "file_utils_cache"
@@ -48,13 +49,33 @@ def download_file(url: str, filename: str = None, download_dir: str = None) -> s
     download_dir = Path(download_dir or DEFAULT_DOWNLOAD_DIR)
     download_dir.mkdir(parents=True, exist_ok=True)
 
+    response = requests.get(url, stream=True)
+    content_type = response.headers.get("Content-Type")
+
+    parsed = urlparse(url)
+    ext = os.path.splitext(parsed.path)[1]  # 如 .jpg, .png
+
+    # 根据 Content-Type 映射扩展名
+    # ext = mimetypes.guess_extension(content_type) if content_type else None
+
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp",".mp4",".avi"}
+
+    if not ext or not ext.startswith(".") or len(ext) > 5 or ext.lower() not in allowed_extensions:
+        print(f"非法扩展名: {ext}, 终止下载")
+        return None  # 不合法时提前返回空字符串
+
     # 如果没有指定文件名，则用 URL 哈希 + 扩展名
     if not filename:
-        ext = os.path.splitext(os.path.basename(url))[1] or ".jpg"
         hash_name = f"{get_url_hash(url)}{ext}"
         filename = hash_name
 
-    local_path = download_dir / filename
+
+    # # 获取原始扩展名（可选）
+    # parsed = urlparse(url)
+    # ext = os.path.splitext(parsed.path)[1]  # 如 .jpg, .png
+    # local_path = os.path.join(download_dir, f"{filename}{ext}")
+
+    local_path = Path(os.path.join(download_dir, filename))  
 
     # 如果文件已存在，直接返回路径
     if local_path.exists():
