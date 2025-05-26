@@ -680,6 +680,7 @@ class SAM2VideoPredictor(SAM2Base):
         reverse=False,
     ):
         """Propagate the input points across frames to track in the entire video."""
+        """跨帧传播输入点以跟踪整个视频。"""
         self.propagate_in_video_preflight(inference_state)
 
         output_dict = inference_state["output_dict"]

@@ -2,6 +2,7 @@
 import cv2
 import torch
 import argparse
+import time  # 在文件顶部添加
 from PIL import Image
 import json
 import copy
@@ -17,6 +18,8 @@ from utils.track_utils import sample_points_from_masks
 from utils.video_utils import create_video_from_images, create_video_from_image_array
 from utils.mask_dictionary_model import MaskDictionaryModel, ObjectInfo
 from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
+
+
 
 def process_video_with_sam_gdino(
         video_path: str,
@@ -44,6 +47,7 @@ def process_video_with_sam_gdino(
     返回:
         str: 输出视频路径。
     """
+    start_time = time.time()  # 记录开始时间
     if filetool.is_url(video_path):
         print(f"检测到 URL，正在下载：{video_path}")
         video_path = filetool.download_file(video_path)  # 下载为本地文件
@@ -108,8 +112,10 @@ def process_video_with_sam_gdino(
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
     # ✅ 使用 ModelManager 获取模型
-    video_predictor =ModelManager.get_sam2_video_predictor()
+    
+
     # sam2_model = ModelManager.get_sam2_model()
+    video_predictor =ModelManager.get_sam2_video_predictor()
     grounding_model = ModelManager.get_grounding_model()
     sam2_image_model = ModelManager.get_sam2_model()
     image_predictor = ModelManager.get_sam2_predictor()
@@ -275,8 +281,9 @@ def process_video_with_sam_gdino(
     # CommonUtils.draw_masks_and_box_with_supervision(source_video_frame_dir, mask_data_dir, json_data_dir, save_tracking_results_dir)
     # 
     create_video_from_images(save_tracking_results_dir, output_video_path, frame_rate=15)
-
-
+    end_time = time.time()
+    total_time = end_time - start_time
+    print("Total time:", total_time)
     return {
         "status": "success",
         "message": "视频处理完成并成功生成输出文件。",
@@ -460,7 +467,7 @@ if __name__ == "__main__":
     args = parser.parse_args([
         "--video-path", "E:/2025/09_无人机平台\视频素材/7.MP4",
         "--text-prompt", "car.",
-        "--client_id", "66",
+        "--client_id", "99",
         "--prompt-type", "mask",
         "--save_image"
     ])
