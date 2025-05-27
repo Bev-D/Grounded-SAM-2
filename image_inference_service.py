@@ -233,6 +233,71 @@ def run_image_inference(
 
     return results
 
+def batch_run_image_inference(
+    image_dir: str,
+    text_prompt: str,
+    client_id: str,
+    box_threshold: float = 0.35,
+    text_threshold: float = 0.25,
+    device: str = "cuda" if torch.cuda.is_available() else "cpu",
+    output_dir: str = None,
+    save_visualizations: bool = True,
+    dump_json_results: bool = True
+):
+    """
+    批量处理指定目录下的所有图像文件。
+
+    Args:
+        image_dir (str): 包含图像的目录路径。
+        text_prompt (str): 文本提示语句（例如："car. tree."）。
+        client_id (str): 客户端任务 ID。
+        box_threshold (float): 检测框置信度阈值。
+        text_threshold (float): 文本匹配阈值。
+        device (str): 运行设备（"cuda" 或 "cpu"）。
+        output_dir (str): 输出目录根路径。
+        save_visualizations (bool): 是否保存可视化图像。
+        dump_json_results (bool): 是否转储 JSON 结果。
+
+    Returns:
+        List[dict]: 每张图像的推理结果列表。
+    """
+    # 确保输出目录存在
+    if output_dir is None or output_dir == "":
+        output_dir = f"./results/{client_id}"
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # 获取支持的图像文件列表
+    supported_exts = [".jpg", ".jpeg", ".png"]
+    image_files = [
+        f for f in os.listdir(image_dir)
+        if os.path.splitext(f)[-1].lower() in supported_exts
+    ]
+    image_files.sort(key=lambda x: int(os.path.splitext(x)[0]))  # 按数字排序
+
+    all_results = []
+
+    # 遍历并处理每张图像
+    for img_file in image_files:
+        img_path = os.path.join(image_dir, img_file)
+        print(f"Processing: {img_path}")
+
+        result = run_image_inference(
+            img_path=img_path,
+            text_prompt=text_prompt,
+            client_id=client_id,
+            box_threshold=box_threshold,
+            text_threshold=text_threshold,
+            device=device,
+            output_dir=str(output_dir),
+            save_visualizations=save_visualizations,
+            dump_json_results=dump_json_results
+        )
+
+        all_results.append(result)
+
+    return all_results
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="使用 Grounding DINO 和 SAM2 对图像进行图文检测与分割")
