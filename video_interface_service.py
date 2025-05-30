@@ -126,21 +126,36 @@ def process_video_with_sam_gdino(
     grounding_model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id).to(device)
 
 
-    """ Step 3: 视频帧提取 """
-    frame_generator = sv.get_video_frames_generator(video_path, stride=1)
-    with sv.ImageSink(target_dir_path=source_video_frame_dir, overwrite=True, image_name_pattern="{:05d}.jpg") as sink:
-        for frame in tqdm(frame_generator, desc="Saving Video Frames"):
-            sink.save_image(frame)
+    # Step 3: 视频帧提取（先检查是否已经存在）
+    if os.path.exists(source_video_frame_dir) and len(os.listdir(source_video_frame_dir)) > 0:
+        print(f"⚠️ 帧目录 {source_video_frame_dir} 已存在且非空，跳过帧提取步骤")
+        frame_names = sorted(
+            [p for p in os.listdir(source_video_frame_dir) if os.path.splitext(p)[-1].lower() in [".jpg", ".jpeg", ".png"]],
+            key=lambda x: int(os.path.splitext(x)[0])
+        )
+    else:
+        print(f"✅ 开始提取视频帧到 {source_video_frame_dir}")
+        # 清除旧文件并重新生成
+        if os.path.exists(source_video_frame_dir):
+            import shutil
+            shutil.rmtree(source_video_frame_dir)
+        os.makedirs(source_video_frame_dir, exist_ok=True)
+    
+        frame_generator = sv.get_video_frames_generator(video_path, stride=1)
+        with sv.ImageSink(target_dir_path=source_video_frame_dir, overwrite=True, image_name_pattern="{:05d}.jpg") as sink:
+            for frame in tqdm(frame_generator, desc="Saving Video Frames"):
+                sink.save_image(frame)
+    
+        frame_names = sorted(
+            [p for p in os.listdir(source_video_frame_dir) if os.path.splitext(p)[-1].lower() in [".jpg", ".jpeg", ".png"]],
+            key=lambda x: int(os.path.splitext(x)[0])
+        )
 
-    frame_names = sorted(
-        [p for p in os.listdir(source_video_frame_dir) if os.path.splitext(p)[-1].lower() in [".jpg", ".jpeg", ".png"]],
-        key=lambda x: int(os.path.splitext(x)[0])
-    )
     
     
     # 初始化视频预测器的状态
-    inference_state = video_predictor.init_state(video_path=source_video_frame_dir, offload_video_to_cpu=True, async_loading_frames=True)
-    step = 20 # 为 Grounding DINO 预测器采样帧的步骤
+    inference_state = video_predictor.init_state(video_path=source_video_frame_dir, offload_video_to_cpu=True, offload_state_to_cpu=True, async_loading_frames=True)
+    step = 1 # 为 Grounding DINO 预测器采样帧的步骤
     sam2_masks = MaskDictionaryModel()
     objects_count = 0
 
@@ -161,8 +176,8 @@ def process_video_with_sam_gdino(
         results = processor.post_process_grounded_object_detection(
             outputs,
             inputs.input_ids,
-            box_threshold=0.25,
-            text_threshold=0.25,
+            box_threshold=box_threshold,
+            text_threshold=text_threshold,
             target_sizes=[image.size[::-1]]
         )
     
@@ -226,7 +241,8 @@ def process_video_with_sam_gdino(
             video_predictor.reset_state(inference_state)
     
             for object_id, object_info in mask_dict.labels.items():
-                frame_idx, out_obj_ids, out_mask_logits = video_predictor.add_new_mask(
+                # frame_idx, out_obj_ids, out_mask_logits = video_predictor.add_new_mask(
+                video_predictor.add_new_mask(
                     inference_state,
                     start_frame_idx,
                     object_id,
@@ -465,10 +481,12 @@ if __name__ == "__main__":
                         help="是否保存每帧结果为图像文件（默认: False）")
 
     args = parser.parse_args([
-        "--video-path", "E:/2025/09_无人机平台\视频素材/7.MP4",
-        "--text-prompt", "car.",
-        "--client_id", "99",
+        "--video-path", "E:/2025/09_无人机平台\视频素材/smoketest.MP4",
+        "--text-prompt", "smoke. fire.",
+        "--client_id", "smoketest",
         "--prompt-type", "mask",
+        "--box-threshold","0.4",
+        "--text-threshold","0.3",
         "--save_image"
     ])
 

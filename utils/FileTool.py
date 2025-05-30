@@ -168,3 +168,37 @@ def get_temp_path(suffix: str = ".tmp") -> str:
     return str(Path(tempfile.NamedTemporaryFile(suffix=suffix).name))
 
 
+def process_input_image(image: str):
+    # 去除前后空格并统一格式
+    image = image.strip()
+
+    # 判断是否为视频文件或单张图片文件
+    if os.path.isfile(image):
+        file_ext = os.path.splitext(image)[1].lower()
+        if file_ext in ['.mp4', '.avi', '.mov']:  # 支持的视频格式
+            print(f"✅ 输入为视频文件：{image}")
+            file_name_list = None  # 视频无需预先处理文件名列表
+            return "video", file_name_list
+        elif file_ext in ['.jpg', '.jpeg', '.png']:  # 单张图片
+            print(f"✅ 输入为单张图片：{image}")
+            file_name_list = [os.path.basename(image)]
+            return "image_list", file_name_list
+        else:
+            raise ValueError("❌ 不支持的文件格式")
+
+    # 判断是否为多张图像文件的逗号分隔字符串
+    elif ',' in image:
+        file_list = [f.strip() for f in image.split(',')]
+        supported_extensions = {'.jpg', '.jpeg', '.png'}
+
+        for f in file_list:
+            ext = os.path.splitext(f)[1].lower()
+            if ext not in supported_extensions:
+                raise ValueError(f"❌ 文件 {f} 格式不支持，仅支持 .jpg, .jpeg, .png")
+
+        print(f"✅ 输入为多张图片列表：{file_list}")
+        file_name_list = [os.path.basename(f) for f in file_list]
+        return "image_list", file_name_list
+
+    else:
+        raise ValueError("❌ 无法识别的输入格式")
